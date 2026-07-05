@@ -168,6 +168,38 @@ DECLARE
   cantidad_b integer;
   precio_a numeric;
   precio_b numeric;
+  clientes text[] := ARRAY[
+    'Agrícola San Fernando S.A.C.',
+    'Fundo Santa Rosa',
+    'Agroexportadora Valle Sur',
+    'Cooperativa Agraria Chincha',
+    'Inversiones Campo Verde E.I.R.L.',
+    'Agrícola La Esperanza',
+    'Fundo El Carmen',
+    'Agroindustrias Santa Elena S.A.C.',
+    'Productores Unidos de Ica',
+    'Agrícola Don Miguel',
+    'Fundo Los Olivos',
+    'Campos del Pacífico S.A.C.',
+    'Agropecuaria San José',
+    'Agrícola Las Palmeras',
+    'Fundo Vista Alegre',
+    'Corporación Agraria del Sur',
+    'Agroexport Chincha S.A.C.',
+    'Asociación de Productores El Valle',
+    'Agrícola Nueva Generación',
+    'Fundo La Primavera',
+    'Agroservicios Santa María',
+    'Cultivos del Sol E.I.R.L.',
+    'Agrícola Virgen del Carmen',
+    'Fundo Santa Adela',
+    'Productores Agrarios de Grocio Prado',
+    'Agroindustrias El Pedregal',
+    'Agrícola Costa Verde S.A.C.',
+    'Fundo Los Laureles',
+    'Cooperativa Agraria San Andrés',
+    'Cultivos Peruanos del Sur'
+  ];
 BEGIN
   FOR dia IN 1..730 LOOP
    FOR turno IN 1..(1 + (dia % 3)) LOOP
@@ -184,7 +216,7 @@ BEGIN
 
     INSERT INTO ventas (cliente, total, estado, fecha)
     VALUES (
-      'DEMO - Cliente ' || (((dia + turno - 2) % 30) + 1),
+      'DEMO - ' || clientes[((dia + turno - 2) % array_length(clientes, 1)) + 1],
       (cantidad_a * precio_a) + (cantidad_b * precio_b),
       'COMPLETADA',
       CURRENT_DATE - (731 - dia) * INTERVAL '1 day'
