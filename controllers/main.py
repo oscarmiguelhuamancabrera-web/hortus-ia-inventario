@@ -1,32 +1,37 @@
-from datetime import datetime
+from time import monotonic
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from controllers.auth import login_required
-from ia.predictor import entrenar_y_predecir, generar_alertas
 from models.database import execute, query
 from services.assistant import responder
 from services.inventory import kpis, registrar_venta
 
 main_bp = Blueprint("main", __name__)
+_dashboard_cache = {"expires": 0, "data": None}
 
 
 @main_bp.get("/")
 @login_required
 def dashboard():
-    stats = kpis()
-    monthly = query("""
-      SELECT TO_CHAR(date_trunc('month',fecha),'Mon') mes,SUM(total) total
-      FROM ventas WHERE fecha>=CURRENT_DATE-INTERVAL '6 months'
-      GROUP BY date_trunc('month',fecha) ORDER BY date_trunc('month',fecha)
-    """)
-    top = query("""
-      SELECT p.nombre,SUM(d.cantidad) cantidad FROM detalle_ventas d
-      JOIN productos p ON p.id=d.producto_id GROUP BY p.id ORDER BY cantidad DESC LIMIT 5
-    """)
-    for item in monthly:
-        item["total"] = float(item["total"])
-    for item in top:
-        item["cantidad"] = float(item["cantidad"])
-    alerts = query("SELECT a.*,p.nombre producto FROM alertas a JOIN productos p ON p.id=a.producto_id WHERE a.activa ORDER BY a.creado_en DESC LIMIT 6")
+    cached = _dashboard_cache["data"] if monotonic() < _dashboard_cache["expires"] else None
+    if cached is None:
+        stats = kpis()
+        monthly = query("""
+          SELECT TO_CHAR(date_trunc('month',fecha),'Mon') mes,SUM(total) total
+          FROM ventas WHERE fecha>=CURRENT_DATE-INTERVAL '6 months'
+          GROUP BY date_trunc('month',fecha) ORDER BY date_trunc('month',fecha)
+        """)
+        top = query("""
+          SELECT p.nombre,SUM(d.cantidad) cantidad FROM detalle_ventas d
+          JOIN productos p ON p.id=d.producto_id GROUP BY p.id ORDER BY cantidad DESC LIMIT 5
+        """)
+        for item in monthly:
+            item["total"] = float(item["total"])
+        for item in top:
+            item["cantidad"] = float(item["cantidad"])
+        alerts = query("SELECT a.*,p.nombre producto FROM alertas a JOIN productos p ON p.id=a.producto_id WHERE a.activa ORDER BY a.creado_en DESC LIMIT 6")
+        cached = {"stats": stats, "monthly": monthly, "top": top, "alerts": alerts}
+        _dashboard_cache.update(data=cached, expires=monotonic() + 30)
+    stats, monthly, top, alerts = (cached[k] for k in ("stats", "monthly", "top", "alerts"))
     return render_template("dashboard.html", stats=stats, monthly=monthly, top=top, alerts=alerts)
 
 
@@ -96,6 +101,7 @@ def inventario():
                     return redirect(url_for("main.inventario"))
                 cur.execute("INSERT INTO movimientos_inventario(producto_id,tipo,cantidad,motivo,referencia) VALUES(%s,%s,%s,%s,%s)",
                             (pid, tipo, cantidad, request.form.get("motivo"), request.form.get("referencia")))
+        from ia.predictor import generar_alertas
         generar_alertas()
         flash("Movimiento registrado.", "success")
         return redirect(url_for("main.inventario"))
@@ -110,6 +116,7 @@ def ventas():
         item = {"producto_id": request.form["producto_id"], "cantidad": request.form["cantidad"], "precio": request.form["precio"]}
         try:
             registrar_venta(request.form.get("cliente") or "Público general", [item])
+            from ia.predictor import generar_alertas
             generar_alertas()
             flash("Venta registrada y stock actualizado.", "success")
         except ValueError as exc:
@@ -124,6 +131,7 @@ def ventas():
 @login_required
 def predicciones():
     if request.method == "POST":
+        from ia.predictor import entrenar_y_predecir
         count = entrenar_y_predecir(int(request.form.get("dias", 30)))
         flash(f"Se generaron {count} predicciones.", "success" if count else "warning")
         return redirect(url_for("main.predicciones"))

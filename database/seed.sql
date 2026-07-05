@@ -62,7 +62,55 @@ VALUES
   ('PRD-0008', 'Bioestimulante Raíz Forte', 'Promotor de raíces de origen biológico',
    (SELECT id FROM categorias WHERE nombre='Bioestimulantes'),
    (SELECT id FROM proveedores WHERE ruc='20543219876'),
-   'L', 22.00, 32.00, 600, 150)
+   'L', 22.00, 32.00, 600, 150),
+  ('PRD-0009', 'Sulfato de Potasio', 'Fertilizante soluble rico en potasio',
+   (SELECT id FROM categorias WHERE nombre='Fertilizantes'),
+   (SELECT id FROM proveedores WHERE ruc='20123456781'),
+   'kg', 4.20, 6.30, 780, 300),
+  ('PRD-0010', 'Semilla de Tomate Río Grande', 'Semilla para tomate de crecimiento determinado',
+   (SELECT id FROM categorias WHERE nombre='Semillas'),
+   (SELECT id FROM proveedores WHERE ruc='20456789126'),
+   'sobre', 52.00, 78.00, 140, 80),
+  ('PRD-0011', 'Herbicida Glifosato 1L', 'Herbicida sistémico de uso agrícola',
+   (SELECT id FROM categorias WHERE nombre='Agroquímicos'),
+   (SELECT id FROM proveedores WHERE ruc='20678912345'),
+   'L', 17.50, 27.00, 72, 120),
+  ('PRD-0012', 'Ácidos Húmicos 20L', 'Mejorador orgánico para suelo y fertirriego',
+   (SELECT id FROM categorias WHERE nombre='Bioestimulantes'),
+   (SELECT id FROM proveedores WHERE ruc='20543219876'),
+   'bidón', 95.00, 138.00, 95, 40),
+  ('PRD-0013', 'Fosfato Diamónico DAP', 'Fertilizante granulado 18-46-0',
+   (SELECT id FROM categorias WHERE nombre='Fertilizantes'),
+   (SELECT id FROM proveedores WHERE ruc='20123456781'),
+   'kg', 2.60, 4.10, 980, 450),
+  ('PRD-0014', 'Semilla de Pimiento Papri King', 'Semilla seleccionada para páprika',
+   (SELECT id FROM categorias WHERE nombre='Semillas'),
+   (SELECT id FROM proveedores WHERE ruc='20456789126'),
+   'sobre', 68.00, 99.00, 55, 70),
+  ('PRD-0015', 'Acaricida Abamectina 1L', 'Control de ácaros y minadores',
+   (SELECT id FROM categorias WHERE nombre='Agroquímicos'),
+   (SELECT id FROM proveedores WHERE ruc='20678912345'),
+   'L', 39.00, 58.00, 130, 90),
+  ('PRD-0016', 'Aminoácidos Vegetales 5L', 'Bioestimulante para recuperación de estrés',
+   (SELECT id FROM categorias WHERE nombre='Bioestimulantes'),
+   (SELECT id FROM proveedores WHERE ruc='20543219876'),
+   'galón', 64.00, 92.00, 210, 100),
+  ('PRD-0017', 'NPK 20-20-20', 'Fertilizante balanceado soluble',
+   (SELECT id FROM categorias WHERE nombre='Fertilizantes'),
+   (SELECT id FROM proveedores WHERE ruc='20123456781'),
+   'kg', 5.10, 7.50, 340, 350),
+  ('PRD-0018', 'Semilla de Cebolla Roja', 'Semilla de cebolla para costa central',
+   (SELECT id FROM categorias WHERE nombre='Semillas'),
+   (SELECT id FROM proveedores WHERE ruc='20456789126'),
+   'sobre', 44.00, 67.00, 125, 60),
+  ('PRD-0019', 'Adherente Agrícola 1L', 'Coadyuvante para aplicaciones foliares',
+   (SELECT id FROM categorias WHERE nombre='Agroquímicos'),
+   (SELECT id FROM proveedores WHERE ruc='20678912345'),
+   'L', 12.00, 19.00, 440, 150),
+  ('PRD-0020', 'Extracto de Algas 1L', 'Bioestimulante natural para floración y cuajado',
+   (SELECT id FROM categorias WHERE nombre='Bioestimulantes'),
+   (SELECT id FROM proveedores WHERE ruc='20543219876'),
+   'L', 28.00, 43.00, 165, 180)
 ON CONFLICT (codigo) DO UPDATE
 SET nombre = EXCLUDED.nombre,
     descripcion = EXCLUDED.descripcion,
@@ -77,10 +125,10 @@ SET nombre = EXCLUDED.nombre,
 
 -- Limpiar únicamente información demo dependiente.
 DELETE FROM alertas
-WHERE producto_id IN (SELECT id FROM productos WHERE codigo LIKE 'PRD-000%');
+WHERE producto_id IN (SELECT id FROM productos WHERE codigo BETWEEN 'PRD-0001' AND 'PRD-0020');
 
 DELETE FROM predicciones
-WHERE producto_id IN (SELECT id FROM productos WHERE codigo LIKE 'PRD-000%');
+WHERE producto_id IN (SELECT id FROM productos WHERE codigo BETWEEN 'PRD-0001' AND 'PRD-0020');
 
 DELETE FROM movimientos_inventario
 WHERE referencia LIKE 'DEMO-%';
@@ -98,14 +146,21 @@ FROM (
     ('PRD-0001', 3000::numeric), ('PRD-0002', 1600),
     ('PRD-0003', 700), ('PRD-0004', 1100),
     ('PRD-0005', 900), ('PRD-0006', 800),
-    ('PRD-0007', 650), ('PRD-0008', 1200)
+    ('PRD-0007', 650), ('PRD-0008', 1200),
+    ('PRD-0009', 1600), ('PRD-0010', 450),
+    ('PRD-0011', 700), ('PRD-0012', 330),
+    ('PRD-0013', 2100), ('PRD-0014', 280),
+    ('PRD-0015', 560), ('PRD-0016', 680),
+    ('PRD-0017', 1900), ('PRD-0018', 420),
+    ('PRD-0019', 950), ('PRD-0020', 620)
 ) AS x(codigo, cantidad)
 JOIN productos p ON p.codigo=x.codigo;
 
--- Seis meses de ventas: una venta diaria con dos productos.
+-- 24 meses de ventas: entre una y tres ventas diarias con dos productos.
 DO $$
 DECLARE
   dia integer;
+  turno integer;
   venta_actual bigint;
   producto_a bigint;
   producto_b bigint;
@@ -114,24 +169,26 @@ DECLARE
   precio_a numeric;
   precio_b numeric;
 BEGIN
-  FOR dia IN 1..180 LOOP
+  FOR dia IN 1..730 LOOP
+   FOR turno IN 1..(1 + (dia % 3)) LOOP
     SELECT id, precio_venta INTO producto_a, precio_a
     FROM productos
-    WHERE codigo = 'PRD-' || LPAD((((dia - 1) % 8) + 1)::text, 4, '0');
+    WHERE codigo = 'PRD-' || LPAD(((((dia * turno) - 1) % 20) + 1)::text, 4, '0');
 
     SELECT id, precio_venta INTO producto_b, precio_b
     FROM productos
-    WHERE codigo = 'PRD-' || LPAD((((dia + 2) % 8) + 1)::text, 4, '0');
+    WHERE codigo = 'PRD-' || LPAD((((dia + turno * 7) % 20) + 1)::text, 4, '0');
 
-    cantidad_a := 3 + (dia % 12);
-    cantidad_b := 2 + ((dia * 3) % 8);
+    cantidad_a := 2 + ((dia + turno) % 16);
+    cantidad_b := 1 + ((dia * turno * 3) % 11);
 
     INSERT INTO ventas (cliente, total, estado, fecha)
     VALUES (
-      'DEMO - Cliente ' || (((dia - 1) % 12) + 1),
+      'DEMO - Cliente ' || (((dia + turno - 2) % 30) + 1),
       (cantidad_a * precio_a) + (cantidad_b * precio_b),
       'COMPLETADA',
-      CURRENT_DATE - (181 - dia) * INTERVAL '1 day' + INTERVAL '10 hours'
+      CURRENT_DATE - (731 - dia) * INTERVAL '1 day'
+        + (8 + turno * 3) * INTERVAL '1 hour'
     )
     RETURNING id INTO venta_actual;
 
@@ -146,10 +203,13 @@ BEGIN
     VALUES
       (producto_a, 'SALIDA', cantidad_a, 'Venta de demostración',
        'DEMO-VENTA-' || venta_actual,
-       CURRENT_DATE - (181 - dia) * INTERVAL '1 day' + INTERVAL '10 hours'),
+       CURRENT_DATE - (731 - dia) * INTERVAL '1 day'
+         + (8 + turno * 3) * INTERVAL '1 hour'),
       (producto_b, 'SALIDA', cantidad_b, 'Venta de demostración',
        'DEMO-VENTA-' || venta_actual,
-       CURRENT_DATE - (181 - dia) * INTERVAL '1 day' + INTERVAL '10 hours');
+       CURRENT_DATE - (731 - dia) * INTERVAL '1 day'
+         + (8 + turno * 3) * INTERVAL '1 hour');
+   END LOOP;
   END LOOP;
 END $$;
 

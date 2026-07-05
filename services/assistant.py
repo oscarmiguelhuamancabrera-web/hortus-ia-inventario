@@ -1,5 +1,4 @@
 from flask import current_app
-from openai import OpenAI
 from models.database import execute, query
 
 
@@ -12,6 +11,7 @@ def responder(pregunta):
     if not current_app.config["OPENAI_API_KEY"]:
         answer = "El asistente requiere configurar OPENAI_API_KEY. Mientras tanto, revise Alertas y Predicciones para decidir la reposición."
     else:
+        from openai import OpenAI
         client = OpenAI(api_key=current_app.config["OPENAI_API_KEY"])
         response = client.chat.completions.create(
             model=current_app.config["OPENAI_MODEL"],
@@ -24,4 +24,3 @@ def responder(pregunta):
         answer = response.choices[0].message.content
     execute("INSERT INTO asistente_historial(usuario_id,pregunta,respuesta) VALUES(NULL,%s,%s)", (pregunta, answer))
     return answer
-

@@ -16,8 +16,10 @@ def create_app():
 
     from controllers.auth import auth_bp
     from controllers.main import main_bp
+    from models.database import close_connection
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
+    app.teardown_appcontext(close_connection)
 
     @app.context_processor
     def globals_template():
@@ -30,4 +32,3 @@ app = create_app()
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
-
