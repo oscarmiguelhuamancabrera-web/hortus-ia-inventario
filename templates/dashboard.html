@@ -1,0 +1,14 @@
+{% extends 'base.html' %}{% block heading %}Dashboard{% endblock %}{% block subheading %}Resumen general de inventarios, ventas y predicciones{% endblock %}
+{% block content %}
+<div class="kpi-grid">
+{% for icon,label,value,kind in [('box-seam','Productos',stats.productos,'teal'),('exclamation-triangle','Stock crítico',stats.stock_bajo,'orange'),('cash-stack','Ventas de hoy','S/ %.2f'|format(stats.ventas_hoy),'blue'),('bell','Alertas activas',alerts|length,'purple')] %}
+<div class="kpi cardx"><div class="kpi-icon {{kind}}"><i class="bi bi-{{icon}}"></i></div><div><span>{{label}}</span><strong>{{value}}</strong></div></div>{% endfor %}</div>
+<div class="row g-4 mt-1"><div class="col-lg-8"><div class="cardx"><div class="section-title"><h5>Ventas de los últimos meses</h5></div><canvas id="salesChart" height="105"></canvas></div></div>
+<div class="col-lg-4"><div class="cardx"><div class="section-title"><h5>Productos más vendidos</h5></div><canvas id="topChart" height="225"></canvas></div></div></div>
+<div class="cardx mt-4"><div class="section-title"><h5>Alertas recientes</h5><a href="{{url_for('main.alertas')}}">Ver todas</a></div>
+{% if alerts %}<div class="table-responsive"><table class="table clean"><tbody>{% for a in alerts %}<tr><td><span class="dot {{a.nivel}}"></span></td><td><strong>{{a.producto}}</strong><small>{{a.mensaje}}</small></td><td><span class="badge badge-soft">{{a.tipo}}</span></td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="empty">Aún no hay alertas. Genere una predicción para comenzar.</div>{% endif %}</div>
+{% endblock %}
+{% block scripts %}<script>
+new Chart(document.getElementById('salesChart'),{type:'line',data:{labels:{{monthly|map(attribute='mes')|list|tojson}},datasets:[{label:'Ventas (S/)',data:{{monthly|map(attribute='total')|list|tojson}},borderColor:'#0f766e',backgroundColor:'rgba(15,118,110,.1)',fill:true,tension:.35}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+new Chart(document.getElementById('topChart'),{type:'doughnut',data:{labels:{{top|map(attribute='nombre')|list|tojson}},datasets:[{data:{{top|map(attribute='cantidad')|list|tojson}},backgroundColor:['#0f766e','#14b8a6','#2dd4bf','#5eead4','#99f6e4']}]},options:{plugins:{legend:{position:'bottom'}}}});
+</script>{% endblock %}
