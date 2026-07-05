@@ -23,8 +23,8 @@ Cambie esa contraseña para un entorno real. La clave se almacena mediante hash 
 
 Después de ejecutar `database/schema.sql`, abra una nueva consulta en **SQL Editor**,
 copie `database/seed.sql` y ejecútelo. El script crea 20 productos y aproximadamente
-1,460 ventas distribuidas en 24 meses, con dos detalles cada una. Puede ejecutarse nuevamente: solo recrea los
-datos marcados como `DEMO` y conserva los registros reales.
+1,460 ventas distribuidas en 24 meses, con dos detalles cada una. Puede ejecutarse nuevamente:
+recrea únicamente los registros internos con origen `SEMILLA` y conserva los datos ingresados manualmente.
 
 ## 2. Ejecución local
 

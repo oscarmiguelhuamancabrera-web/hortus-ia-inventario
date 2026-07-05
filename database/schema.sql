@@ -20,11 +20,13 @@ CREATE TABLE IF NOT EXISTS productos (
 );
 CREATE TABLE IF NOT EXISTS movimientos_inventario (
   id BIGSERIAL PRIMARY KEY, producto_id BIGINT NOT NULL REFERENCES productos(id), tipo VARCHAR(10) NOT NULL CHECK(tipo IN('ENTRADA','SALIDA')),
-  cantidad NUMERIC(12,2) NOT NULL CHECK(cantidad>0), motivo VARCHAR(160), referencia VARCHAR(80), fecha TIMESTAMPTZ DEFAULT NOW()
+  cantidad NUMERIC(12,2) NOT NULL CHECK(cantidad>0), motivo VARCHAR(160), referencia VARCHAR(80),
+  origen VARCHAR(20) DEFAULT 'MANUAL', fecha TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE TABLE IF NOT EXISTS ventas (
   id BIGSERIAL PRIMARY KEY, cliente VARCHAR(160) DEFAULT 'Público general', total NUMERIC(12,2) NOT NULL DEFAULT 0,
-  estado VARCHAR(20) DEFAULT 'COMPLETADA', fecha TIMESTAMPTZ DEFAULT NOW()
+  estado VARCHAR(20) DEFAULT 'COMPLETADA', origen VARCHAR(20) DEFAULT 'MANUAL',
+  fecha TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE TABLE IF NOT EXISTS detalle_ventas (
   id BIGSERIAL PRIMARY KEY, venta_id BIGINT NOT NULL REFERENCES ventas(id) ON DELETE CASCADE,
@@ -47,4 +49,3 @@ CREATE TABLE IF NOT EXISTS asistente_historial (
 CREATE INDEX IF NOT EXISTS idx_ventas_fecha ON ventas(fecha);
 CREATE INDEX IF NOT EXISTS idx_detalle_producto ON detalle_ventas(producto_id);
 CREATE INDEX IF NOT EXISTS idx_movimientos_producto ON movimientos_inventario(producto_id);
-

@@ -4,6 +4,11 @@
 
 BEGIN;
 
+-- Identificador interno para poder recargar los datos iniciales sin mostrar
+-- etiquetas de prueba en la interfaz.
+ALTER TABLE ventas ADD COLUMN IF NOT EXISTS origen VARCHAR(20) DEFAULT 'MANUAL';
+ALTER TABLE movimientos_inventario ADD COLUMN IF NOT EXISTS origen VARCHAR(20) DEFAULT 'MANUAL';
+
 INSERT INTO categorias (nombre, descripcion)
 VALUES
   ('Fertilizantes', 'Productos para nutrición y recuperación del suelo'),
@@ -131,16 +136,16 @@ DELETE FROM predicciones
 WHERE producto_id IN (SELECT id FROM productos WHERE codigo BETWEEN 'PRD-0001' AND 'PRD-0020');
 
 DELETE FROM movimientos_inventario
-WHERE referencia LIKE 'DEMO-%';
+WHERE origen = 'SEMILLA' OR referencia LIKE 'DEMO-%' OR referencia LIKE 'SEMILLA-%';
 
 DELETE FROM ventas
-WHERE cliente LIKE 'DEMO - %';
+WHERE origen = 'SEMILLA' OR cliente LIKE 'DEMO - %';
 
 -- Movimientos iniciales de muestra.
 INSERT INTO movimientos_inventario
-  (producto_id, tipo, cantidad, motivo, referencia, fecha)
-SELECT p.id, 'ENTRADA', x.cantidad, 'Carga inicial de demostración',
-       'DEMO-INICIAL-' || p.codigo, CURRENT_DATE - INTERVAL '190 days'
+  (producto_id, tipo, cantidad, motivo, referencia, origen, fecha)
+SELECT p.id, 'ENTRADA', x.cantidad, 'Carga inicial de inventario',
+       'CARGA-INICIAL-' || p.codigo, 'SEMILLA', CURRENT_DATE - INTERVAL '730 days'
 FROM (
   VALUES
     ('PRD-0001', 3000::numeric), ('PRD-0002', 1600),
@@ -214,11 +219,12 @@ BEGIN
     cantidad_a := 2 + ((dia + turno) % 16);
     cantidad_b := 1 + ((dia * turno * 3) % 11);
 
-    INSERT INTO ventas (cliente, total, estado, fecha)
+    INSERT INTO ventas (cliente, total, estado, origen, fecha)
     VALUES (
-      'DEMO - ' || clientes[((dia + turno - 2) % array_length(clientes, 1)) + 1],
+      clientes[((dia + turno - 2) % array_length(clientes, 1)) + 1],
       (cantidad_a * precio_a) + (cantidad_b * precio_b),
       'COMPLETADA',
+      'SEMILLA',
       CURRENT_DATE - (731 - dia) * INTERVAL '1 day'
         + (8 + turno * 3) * INTERVAL '1 hour'
     )
@@ -231,14 +237,14 @@ BEGIN
       (venta_actual, producto_b, cantidad_b, precio_b, cantidad_b * precio_b);
 
     INSERT INTO movimientos_inventario
-      (producto_id, tipo, cantidad, motivo, referencia, fecha)
+      (producto_id, tipo, cantidad, motivo, referencia, origen, fecha)
     VALUES
-      (producto_a, 'SALIDA', cantidad_a, 'Venta de demostración',
-       'DEMO-VENTA-' || venta_actual,
+      (producto_a, 'SALIDA', cantidad_a, 'Venta',
+       'VENTA-' || venta_actual, 'SEMILLA',
        CURRENT_DATE - (731 - dia) * INTERVAL '1 day'
          + (8 + turno * 3) * INTERVAL '1 hour'),
-      (producto_b, 'SALIDA', cantidad_b, 'Venta de demostración',
-       'DEMO-VENTA-' || venta_actual,
+      (producto_b, 'SALIDA', cantidad_b, 'Venta',
+       'VENTA-' || venta_actual, 'SEMILLA',
        CURRENT_DATE - (731 - dia) * INTERVAL '1 day'
          + (8 + turno * 3) * INTERVAL '1 hour');
    END LOOP;
@@ -252,6 +258,6 @@ SELECT
   (SELECT COUNT(*) FROM categorias WHERE activo) AS categorias,
   (SELECT COUNT(*) FROM proveedores WHERE activo) AS proveedores,
   (SELECT COUNT(*) FROM productos WHERE activo) AS productos,
-  (SELECT COUNT(*) FROM ventas WHERE cliente LIKE 'DEMO - %') AS ventas_demo,
+  (SELECT COUNT(*) FROM ventas WHERE origen='SEMILLA') AS ventas_cargadas,
   (SELECT COUNT(*) FROM detalle_ventas d JOIN ventas v ON v.id=d.venta_id
-   WHERE v.cliente LIKE 'DEMO - %') AS detalles_demo;
+   WHERE v.origen='SEMILLA') AS detalles_cargados;
