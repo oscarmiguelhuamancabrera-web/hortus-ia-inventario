@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block heading %}Búsqueda global{% endblock %}
+{% block subheading %}{% if term %}Resultados para “{{term}}”{% else %}Encuentra información en todo Hortus IA{% endif %}{% endblock %}
+{% block content %}
+{% set total = productos|length + categorias|length + proveedores|length + modulos|length %}
+{% if not term %}
+<div class="cardx empty-search"><i class="bi bi-search"></i><h4>¿Qué deseas encontrar?</h4><p>Escribe un producto, código, categoría, proveedor o nombre de módulo.</p></div>
+{% elif total == 0 %}
+<div class="cardx empty-search"><i class="bi bi-search"></i><h4>Sin resultados</h4><p>No encontramos coincidencias para “{{term}}”.</p></div>
+{% else %}
+<div class="search-summary">{{total}} resultado{{'' if total == 1 else 's'}} encontrado{{'' if total == 1 else 's'}}</div>
+<div class="search-results">
+{% if productos %}<section class="cardx"><h5><i class="bi bi-box-seam"></i> Productos <span>{{productos|length}}</span></h5>{% for x in productos %}<a class="search-result" href="{{url_for('main.productos')}}"><div class="result-icon product"><i class="bi bi-box"></i></div><div><strong>{{x.nombre}}</strong><small>{{x.codigo}} · Stock: {{x.stock}} {{x.unidad}}</small></div><i class="bi bi-chevron-right"></i></a>{% endfor %}</section>{% endif %}
+{% if categorias %}<section class="cardx"><h5><i class="bi bi-tags"></i> Categorías <span>{{categorias|length}}</span></h5>{% for x in categorias %}<a class="search-result" href="{{url_for('main.crud',entity='categorias')}}"><div class="result-icon category"><i class="bi bi-tag"></i></div><div><strong>{{x.nombre}}</strong><small>{{x.descripcion or 'Sin descripción'}}</small></div><i class="bi bi-chevron-right"></i></a>{% endfor %}</section>{% endif %}
+{% if proveedores %}<section class="cardx"><h5><i class="bi bi-truck"></i> Proveedores <span>{{proveedores|length}}</span></h5>{% for x in proveedores %}<a class="search-result" href="{{url_for('main.crud',entity='proveedores')}}"><div class="result-icon supplier"><i class="bi bi-building"></i></div><div><strong>{{x.razon_social}}</strong><small>RUC {{x.ruc or '—'}} · {{x.contacto or 'Sin contacto'}}</small></div><i class="bi bi-chevron-right"></i></a>{% endfor %}</section>{% endif %}
+{% if modulos %}<section class="cardx"><h5><i class="bi bi-grid"></i> Módulos <span>{{modulos|length}}</span></h5>{% for nombre,descripcion,endpoint,args in modulos %}<a class="search-result" href="{{url_for(endpoint,**args)}}"><div class="result-icon module"><i class="bi bi-arrow-up-right-square"></i></div><div><strong>{{nombre}}</strong><small>{{descripcion}}</small></div><i class="bi bi-chevron-right"></i></a>{% endfor %}</section>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

@@ -9,6 +9,48 @@ main_bp = Blueprint("main", __name__)
 _dashboard_cache = {"expires": 0, "data": None}
 
 
+@main_bp.get("/buscar")
+@login_required
+def buscar():
+    term = request.args.get("q", "").strip()
+    products, categories, suppliers = [], [], []
+    modules = [
+        ("Dashboard", "Resumen e indicadores del negocio", "main.dashboard", {}),
+        ("Categorías", "Administración de categorías", "main.crud", {"entity": "categorias"}),
+        ("Proveedores", "Administración de proveedores", "main.crud", {"entity": "proveedores"}),
+        ("Productos", "Catálogo y niveles de stock", "main.productos", {}),
+        ("Inventario", "Entradas y salidas de existencias", "main.inventario", {}),
+        ("Ventas", "Registro de ventas", "main.ventas", {}),
+        ("Predicciones IA", "Pronóstico de demanda", "main.predicciones", {}),
+        ("Alertas", "Riesgos y reposición", "main.alertas", {}),
+        ("Reportes", "Ventas e inventario valorizado", "main.reportes", {}),
+        ("Asistente IA", "Consultas en lenguaje natural", "main.asistente", {}),
+    ]
+    matching_modules = []
+    if term:
+        pattern = f"%{term}%"
+        products = query("""
+          SELECT id,codigo,nombre,stock,unidad FROM productos
+          WHERE activo AND (nombre ILIKE %s OR codigo ILIKE %s OR COALESCE(descripcion,'') ILIKE %s)
+          ORDER BY nombre LIMIT 20
+        """, (pattern, pattern, pattern))
+        categories = query("""
+          SELECT id,nombre,descripcion FROM categorias
+          WHERE activo AND (nombre ILIKE %s OR COALESCE(descripcion,'') ILIKE %s)
+          ORDER BY nombre LIMIT 10
+        """, (pattern, pattern))
+        suppliers = query("""
+          SELECT id,ruc,razon_social,contacto FROM proveedores
+          WHERE activo AND (razon_social ILIKE %s OR COALESCE(ruc,'') ILIKE %s OR COALESCE(contacto,'') ILIKE %s)
+          ORDER BY razon_social LIMIT 10
+        """, (pattern, pattern, pattern))
+        normalized = term.casefold()
+        matching_modules = [m for m in modules if normalized in f"{m[0]} {m[1]}".casefold()]
+    return render_template("busqueda.html", term=term, productos=products,
+                           categorias=categories, proveedores=suppliers,
+                           modulos=matching_modules)
+
+
 @main_bp.get("/")
 @login_required
 def dashboard():
